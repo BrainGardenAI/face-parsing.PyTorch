@@ -108,3 +108,7 @@ res/
 
 .idea/
 
+# data directories for this repo
+res/cp/
+res/inp_images/
+res/
