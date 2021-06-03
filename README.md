@@ -6,6 +6,13 @@
 	</a>
 </p>
 
+Our fork scripts:
+- `EPE_seg_infer.py` - takes input directory with images, predicts segmentation masks for them and saves masks to the given output directory
+- `EPE_inference_with_detector_*` - scripts for testing detectors, takes input directory with images and saves detection results to given output_directory
+- `extra_video2frames.py` - extract frames from given video and save them to "frames" directory in our dataset structure
+- `extra_copyframes_afterwards.py` - copy frames from one dataset to another, both datasets must have our dataset structure
+
+
 ### Contents
 - [Training](#training)
 - [Demo](#Demo)
