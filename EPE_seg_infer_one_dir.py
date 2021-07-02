@@ -7,7 +7,6 @@ from model import BiSeNet
 import torch
 
 import os
-from tqdm import tqdm
 import os.path as osp
 import numpy as np
 from PIL import Image
@@ -53,7 +52,7 @@ def vis_parsing_maps(im, parsing_anno, stride, save_im=False, save_path='vis_res
 
     return vis_parsing_anno_color
 
-def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', detector_fun=None, quiet=False):
+def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', detector_fun=None):
 
     os.makedirs(respth, exist_ok=True)
 
@@ -69,7 +68,7 @@ def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', 
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
     with torch.no_grad():
-        for image_path in tqdm(sorted(os.listdir(dspth))):
+        for image_path in sorted(os.listdir(dspth)):
             img = Image.open(osp.join(dspth, image_path))
             w, h = img.size
 
@@ -79,8 +78,7 @@ def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', 
                 det_image = np.array(img)
                 (cx, cy, size, isFace), det_res = detector_fun(image=det_image, return_image_result=True)
                 if not isFace:
-                    if not quiet:
-                        print("There is no face! {}".format(image_path))
+                    print("There is no face! {}".format(image_path))
                     continue
 
                 hsize = int(round(size / 2))
@@ -88,13 +86,13 @@ def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', 
                 k = max(h,w) / hsize / 2
                 if k < 1.2:
                     new_hsize = int(max(h,w)/2)
-                    #print("{}: k={}, only pad".format(image_path, k))
+                    print("{}: k={}, only pad".format(image_path, k))
                 elif k < bbox_scale*1.15:
                     new_hsize = int(round(hsize*k))
-                    #print("{}: k={}, take as much as we can".format(image_path, k))
+                    print("{}: k={}, take as much as we can".format(image_path, k))
                 else:
                     new_hsize = int(bbox_scale*hsize)
-                    #print("{}: k={}, crop twice the size of bbox".format(image_path, k))
+                    print("{}: k={}, crop twice the size of bbox".format(image_path, k))
 
                 cx = int(round(cx))
                 cy = int(round(cy - size * 0.15))
@@ -131,8 +129,9 @@ def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', 
             parsing = out.squeeze(0).cpu().numpy().argmax(0)
 
             # print(parsing)
-            #print(np.unique(parsing))
+            print(np.unique(parsing))
             res = vis_parsing_maps(image, parsing, stride=1, save_im=False, save_path=osp.join(respth, image_path))
+
 
             # recover the size and position of the head fragment
             # 1 resize
@@ -144,35 +143,14 @@ def evaluate(respth='./res/seg_FAN', dspth='./data', cp='model_final_diss.pth', 
             right = w - r
             bottom = h - b
             res = cv2.copyMakeBorder(res, top=t, left=l, right=right, bottom=bottom, borderType=cv2.BORDER_CONSTANT)
-            cv2.imwrite(osp.join(respth, osp.splitext(image_path)[0] + ".png"), res, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+            cv2.imwrite(osp.join(respth, osp.splitext(image_path)[0] + ".png"), res)
 
 if __name__ == "__main__":
     all_dataset = True
-    quiet = True
     detector_fun = DECA_FAN.return_bbox
-    root_dir = "/disk/sdb1/avatars/dataset_EPE_data2/FullEPEDataset"
+    input_dir = "/disk/sdb1/avatars/sveta/Stylization/inp_data"
 
-    subset = "" # "val"
-    domains = ("real", "virtual")
-    # if not all_datasets, we can pick a certain actor and video
-    actor_dir = "LeaSeydoux"
-    video_dir = "5-LeaSeydoux"
-
-    for domain in domains:
-        dir_path = os.path.join(root_dir, subset, domain)
-        if all_dataset:
-            video_dirs = sorted(
-                [dir for dir in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, dir))])
-            Lv = len(video_dirs)
-            for iv, video_dir in enumerate(video_dirs):
-                print(f"\t\t{subset}/{domain}: video {iv+1}/{Lv} processing...")
-                full_video_dir = os.path.join(dir_path, video_dir)
-                from_path = os.path.join(full_video_dir, "frames")
-                to_path = os.path.join(full_video_dir, "segments")
-                evaluate(dspth=from_path, respth=to_path, cp='79999_iter.pth', detector_fun=detector_fun, quiet=quiet)
-
-        else:
-            from_path = os.path.join(dir_path, video_dir, "frames")
-            to_path = os.path.join(dir_path, video_dir, "segments")
-            evaluate(dspth=from_path, respth=to_path, cp='79999_iter.pth', detector_fun=detector_fun, quiet=quiet)
+    from_path = os.path.join(input_dir, "frames")
+    to_path = os.path.join(input_dir, "segments_resize2")
+    evaluate(dspth=from_path, respth=to_path, cp='79999_iter.pth', detector_fun=detector_fun)
 
